@@ -1,0 +1,71 @@
+{
+  "Comment": "Prompt chaining com Amazon Bedrock: cada resposta é adicionada ao histórico da conversa e enviada junto com o próximo prompt.",
+  "QueryLanguage": "JSONata",
+  "StartAt": "Invoke model with first prompt",
+  "States": {
+    "Invoke model with first prompt": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::bedrock:invokeModel",
+      "Arguments": {
+        "ModelId": "anthropic.claude-3-haiku-20240307-v1:0",
+        "Body": {
+          "anthropic_version": "bedrock-2023-05-31",
+          "max_tokens": 1000,
+          "messages": [
+            {
+              "role": "user",
+              "content": "{% 'Escreva uma breve introdução sobre: ' & $states.input.topic %}"
+            }
+          ]
+        }
+      },
+      "Assign": {
+        "topic": "{% $states.input.topic %}"
+      },
+      "Output": "{% $states.result.Body.content[0].text %}",
+      "Next": "Add first result to conversation history"
+    },
+    "Add first result to conversation history": {
+      "Type": "Pass",
+      "Assign": {
+        "history": "{% [ {'role': 'user', 'content': 'Escreva uma breve introdução sobre: ' & $topic}, {'role': 'assistant', 'content': $states.input} ] %}"
+      },
+      "Next": "Invoke model with second prompt"
+    },
+    "Invoke model with second prompt": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::bedrock:invokeModel",
+      "Arguments": {
+        "ModelId": "anthropic.claude-3-haiku-20240307-v1:0",
+        "Body": {
+          "anthropic_version": "bedrock-2023-05-31",
+          "max_tokens": 1000,
+          "messages": "{% $append($history, [ {'role': 'user', 'content': 'Agora liste os 3 pontos mais importantes sobre esse tema.'} ]) %}"
+        }
+      },
+      "Output": "{% $states.result.Body.content[0].text %}",
+      "Next": "Add second result to conversation history"
+    },
+    "Add second result to conversation history": {
+      "Type": "Pass",
+      "Assign": {
+        "history": "{% $append($history, [ {'role': 'user', 'content': 'Agora liste os 3 pontos mais importantes sobre esse tema.'}, {'role': 'assistant', 'content': $states.input} ]) %}"
+      },
+      "Next": "Invoke model with third prompt"
+    },
+    "Invoke model with third prompt": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::bedrock:invokeModel",
+      "Arguments": {
+        "ModelId": "anthropic.claude-3-haiku-20240307-v1:0",
+        "Body": {
+          "anthropic_version": "bedrock-2023-05-31",
+          "max_tokens": 1000,
+          "messages": "{% $append($history, [ {'role': 'user', 'content': 'Com base em tudo acima, escreva uma conclusão curta.'} ]) %}"
+        }
+      },
+      "Output": "{% { 'resultado_final': $states.result.Body.content[0].text } %}",
+      "End": true
+    }
+  }
+}
