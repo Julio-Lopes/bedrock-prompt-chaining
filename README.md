@@ -103,7 +103,3 @@ Saída:
 ## Custos
 
 Cada execução faz três chamadas ao Bedrock, e o histórico cresce a cada etapa, aumentando o número de tokens de entrada. Consulte a página de preços do Amazon Bedrock para o modelo escolhido.
-
-## Licença
-
-MIT
